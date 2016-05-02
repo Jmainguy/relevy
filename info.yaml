@@ -1,0 +1,14 @@
+Platops_Support: Gold
+Pager_Playbooks:
+  - http://neat.com
+  - http://notcoolbro.com
+Puppet_Modules:
+  - brew_pulp
+Monitoring:
+  - Nagios
+  - 'New Relic'
+Applications:
+  - Docker
+  - HAproxy
+Purpose:
+  - "I have no idea"
