@@ -10,6 +10,7 @@ import (
     "time"
     "os"
     "gopkg.in/mgo.v2"
+    "strings"
 )
 
 type Config struct {
@@ -34,9 +35,16 @@ func config()  (mongo_db,mongo_passwd,mongo_user,mongo_authdb,mongo_addr,jsonsta
     return
 }
 
+func replace_key(record map[string]interface {}, key string, value interface {}) {
+    delete(record, key)
+    new_key := strings.Replace(key, ".", "-", -1)
+    record[new_key] = value
+    return
+}
+
 func json_grab(url string) (jsonstats_json []byte) {
     resp, err := http.Get(url)
-    //Bomb out if htt.Get fails
+    // Bomb out if http.Get fails
     if err != nil {
         log.Fatal(err)
     }
@@ -47,11 +55,8 @@ func json_grab(url string) (jsonstats_json []byte) {
 func main() {
     // For loop to keep it running forever
     for {
-        //Read Config, load values
-        //mongo_db,_,_,_,mongo_addr,jsonstats := config()
+        // Read Config, load values
         mongo_db,mongo_passwd,mongo_user,mongo_authdb,mongo_addr,jsonstats := config()
-        //mongo_db,_,_,_,jsonstats := config()
-
         // We need this object to establish a session to our MongoDB.
         mongoDBDialInfo := &mgo.DialInfo{
           Addrs:    []string{mongo_addr},
@@ -68,35 +73,47 @@ func main() {
           log.Fatalf("CreateSession: %s\n", err)
         }
 
-        // Initialize values, a string interface?
+        // Initialize values, a map of strings
         values := make(map[string]interface{})
-        //Load Json, if jsonstats is passed from config above, else move on without jsonstats
+        // Load Json, if jsonstats is passed from config above, else move on without jsonstats
         if jsonstats != "" {
-            //jsonfile, _ := ioutil.ReadFile("/tmp/sample.json")
             jsonfile := json_grab(jsonstats)
-            //Unpack Json so we can add things to it
+            // Unpack Json so we can add things to it
             json.Unmarshal(jsonfile, &values)
         }
-        //Unpack stuff from yaml into values as well
+        // Unpack stuff from yaml into values as well
         yamlfile, _ := ioutil.ReadFile("/etc/relevy/info.yaml")
-        y2, _ := yaml.YAMLToJSON(yamlfile)
+        y2, err := yaml.YAMLToJSON(yamlfile)
+        if err != nil {
+            log.Fatal(err)
+        }
         json.Unmarshal(y2, &values)
         // Hostname and time
         hostname, _ := os.Hostname()
         values["_id"] = &hostname
         values["Updated"] = time.Now()
-        // Add tnto Mongo
+        // Remove dots from keys
+        for key, value := range values {
+            if strings.ContainsAny(key, ".") {
+                replace_key(values, key, value)
+            }
+            // If a map inside a map, remove dots from their keys as well
+            if rec, ok := value.(map[string]interface{}); ok {
+                for skey, sval := range rec {
+                    if strings.ContainsAny(skey, ".") {
+                        replace_key(rec, skey, sval)
+                    }
+                }
+            }
+        }
+        // Add into Mongo
         coll := mongoSession.DB(mongo_db).C("relevy")
-        //coll.UpsertId(values["Updated"], values)
         _, err2 := coll.UpsertId(&hostname, values)
-        fmt.Println(err2)
-        //coll.Insert(values)
-       // Pack it all back up
-        //b, _ := json.Marshal(values)
-        //Print it
-        //fmt.Println(string(b))
+        if err2 != nil {
+            log.Fatal(err2)
+        }
 
-        //time.Sleep(1 * time.Minute)
-        time.Sleep(1 * time.Second)
+        fmt.Println("Loop complete, everything is working")
+        time.Sleep(5 * time.Second)
     }
 }
