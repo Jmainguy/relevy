@@ -39,7 +39,6 @@ func replace_key(record map[string]interface {}, key string, value interface {})
     delete(record, key)
     new_key := strings.Replace(key, ".", "-", -1)
     record[new_key] = value
-    return
 }
 
 func json_grab(url string) (jsonstats_json []byte) {
@@ -106,13 +105,19 @@ func main() {
                 }
             }
         }
+        // Request a socket connection
+        sessionCopy := mongoSession.Copy()
+        // Close session whn goroutine exits
+        defer sessionCopy.Close()
         // Add into Mongo
-        coll := mongoSession.DB(mongo_db).C("relevy")
+        coll := sessionCopy.DB(mongo_db).C("relevy")
         _, err2 := coll.UpsertId(&hostname, values)
         if err2 != nil {
             log.Fatal(err2)
         }
 
+        // Close session
+        //mongoSession.Close()
         fmt.Println("Loop complete, everything is working")
         time.Sleep(5 * time.Second)
     }
