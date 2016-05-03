@@ -4,13 +4,13 @@ import (
     "fmt"
     "encoding/json"
     "io/ioutil"
-    "github.com/ghodss/yaml"
     "net/http"
     "log"
     "time"
     "os"
     "gopkg.in/mgo.v2"
     "strings"
+    "github.com/ghodss/yaml"
 )
 
 type Config struct {
@@ -23,8 +23,11 @@ type Config struct {
 }
 
 func config()  (mongo_db,mongo_passwd,mongo_user,mongo_authdb,mongo_addr,jsonstats string){
-    config_file, _ := ioutil.ReadFile("/etc/relevy/config.yaml")
     var v Config
+    config_file, err := ioutil.ReadFile("/etc/relevy/config.yaml")
+    if err != nil {
+        log.Fatal(err)
+    }
     yaml.Unmarshal(config_file, &v)
     mongo_db = v.Mongo_db
     mongo_passwd = v.Mongo_passwd
@@ -39,16 +42,6 @@ func replace_key(record map[string]interface {}, key string, value interface {})
     delete(record, key)
     new_key := strings.Replace(key, ".", "-", -1)
     record[new_key] = value
-}
-
-func json_grab(url string) (jsonstats_json []byte) {
-    resp, err := http.Get(url)
-    // Bomb out if http.Get fails
-    if err != nil {
-        log.Fatal(err)
-    }
-    jsonstats_json, _ = ioutil.ReadAll(resp.Body)
-    return jsonstats_json
 }
 
 func main() {
@@ -73,22 +66,28 @@ func main() {
         }
 
         // Initialize values, a map of strings
-        values := make(map[string]interface{})
+        var values map[string]interface{}
         // Load Json, if jsonstats is passed from config above, else move on without jsonstats
         if jsonstats != "" {
-            jsonfile := json_grab(jsonstats)
-            // Unpack Json so we can add things to it
-            json.Unmarshal(jsonfile, &values)
+            resp, err := http.Get(jsonstats)
+            // Bomb out if http.Get fails
+            if err != nil {
+                log.Fatal(err)
+            }
+            json.NewDecoder(resp.Body).Decode(&values)
+            resp.Body.Close()
         }
         // Unpack stuff from yaml into values as well
-        yamlfile, _ := ioutil.ReadFile("/etc/relevy/info.yaml")
-        y2, err := yaml.YAMLToJSON(yamlfile)
+        data, err := ioutil.ReadFile("/etc/relevy/info.yaml")
         if err != nil {
             log.Fatal(err)
         }
-        json.Unmarshal(y2, &values)
+        yaml.Unmarshal(data, &values)
         // Hostname and time
-        hostname, _ := os.Hostname()
+        hostname, err := os.Hostname()
+        if err != nil {
+            log.Fatal(err)
+        }
         values["_id"] = &hostname
         values["Updated"] = time.Now()
         // Remove dots from keys
@@ -108,16 +107,16 @@ func main() {
         // Request a socket connection
         sessionCopy := mongoSession.Copy()
         // Close session whn goroutine exits
-        defer sessionCopy.Close()
         // Add into Mongo
         coll := sessionCopy.DB(mongo_db).C("relevy")
-        _, err2 := coll.UpsertId(&hostname, values)
+        _ ,err2 := coll.UpsertId(&hostname, values)
         if err2 != nil {
             log.Fatal(err2)
         }
 
         // Close session
-        //mongoSession.Close()
+        mongoSession.Close()
+        sessionCopy.Close()
         fmt.Println("Loop complete, everything is working")
         time.Sleep(5 * time.Second)
     }
