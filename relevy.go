@@ -109,9 +109,9 @@ func main() {
         // Close session whn goroutine exits
         // Add into Mongo
         coll := sessionCopy.DB(mongo_db).C("relevy")
-        _ ,err2 := coll.UpsertId(&hostname, values)
-        if err2 != nil {
-            log.Fatal(err2)
+        _ ,err = coll.UpsertId(&hostname, values)
+        if err != nil {
+            log.Fatal(err)
         }
 
         // Close session
