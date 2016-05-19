@@ -26,6 +26,8 @@ mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d/
 install -m 0755 $RPM_BUILD_DIR/relevy/relevy %{buildroot}/usr/sbin
 install -m 0755 $RPM_BUILD_DIR/relevy/service/relevy.sysv %{buildroot}/etc/rc.d/init.d/relevy
 install -m 0644 $RPM_BUILD_DIR/relevy/service/relevy.service %{buildroot}/usr/lib/systemd/system
+install -m 0644 $RPM_BUILD_DIR/relevy/config.yaml %{buildroot}/etc/relevy/
+install -m 0644 $RPM_BUILD_DIR/relevy/info.yaml %{buildroot}/etc/relevy/
 
 %files
 /usr/sbin/relevy
@@ -37,6 +39,7 @@ install -m 0644 $RPM_BUILD_DIR/relevy/service/relevy.service %{buildroot}/usr/li
 %dir /opt/relevy
 %dir /etc/relevy
 %config(noreplace) /etc/relevy/config.yaml
+%config(noreplace) /etc/relevy/info.yaml
 
 %pre
 getent group relevy >/dev/null || groupadd -r relevy
