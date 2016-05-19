@@ -1,5 +1,6 @@
 # relevy
-Gather information about host and dump into a database.
-## todo
-1. Write rhel6 service script
-2. Write rpm.spec
+Gather information about host, by slurping /etc/relevy/info.yaml, and optionally a remote jsonstats server.
+
+Place this information inside a mongodb host, as configured in /etc/relevy/config.yaml.
+
+This information can then be used by various front ends, such as https://github.com/Jmainguy/relevy-web
