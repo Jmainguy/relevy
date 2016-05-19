@@ -1,8 +1,8 @@
 ---
 
-jasonstats: "http://localhost:8008/json"
-#jsonstats: "http://www.re.redhat.com/talook/host/pnt-gss-solr01.web.prod.ext.phx2.redhat.com.json"
-mongo_db: gcmdb
-mongo_user: gcm
-mongo_passwd: craycray
-mongo_authdb: admin
+jsonstats: "localhost:8008/json"
+mongo_db: relevy
+#mongo_user: gcm
+#mongo_passwd: craycray
+#mongo_authdb: admin
+mongo_addr: localhost:32768
